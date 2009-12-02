@@ -15,6 +15,7 @@ module ContentDm #:nodoc:#
     # be the root of the server on which CONTENTdm is installed.
     def initialize(base_uri)
       @base_uri = self.class.normalize(base_uri)
+      Mapper.init_all(@base_uri)
     end
 
     # Convenience method which returns a single Record when passed a URL in

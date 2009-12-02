@@ -91,12 +91,12 @@ class Mapper < GenericMapper
   
   # Initializes Mappers for all collections at the specified base URI. See init_map
   # for details on authinfo.
-  def self.init_all(base_uri, authinfo)
+  def self.init_all(base_uri)
     uri = self.normalize(base_uri)
     response = Nokogiri::XML(open(uri.merge('cgi-bin/oai.exe?verb=ListSets')))
     sets = response.search('//xmlns:set/xmlns:setSpec/text()',response.namespaces).collect { |set| set.text }
     sets.each { |set|
-      self.init_map(uri, set, authinfo)
+      self.init_map(uri, set)
     }
   end
   
@@ -106,48 +106,37 @@ class Mapper < GenericMapper
   # * A [username, password] Array
   # * A { :user => username, :pass => password } Hash
   # * A Proc or lambda function that returns one of the two above forms
-  def self.init_map(base_uri, collection, authinfo)
-    
-    authorization_proc = lambda { |req,authinfo|
-      credentials = authinfo
-      unless credentials.nil?
-        if credentials.is_a?(Hash)
-          req.basic_auth credentials[:user], credentials[:pass]
-        elsif credentials.is_a?(Array)
-          req.basic_auth *credentials
-        elsif credentials.is_a?(Proc)
-          authorization_proc.call(req, credentials.call())
-        end
-      end
-    }
-    
+  def self.init_map(base_uri, collection)
     uri = self.normalize(base_uri)
-    admin_uri = uri.merge("cgi-bin/admin/editconf.exe?CISODB=%2F#{collection}")
-    html = Net::HTTP.start(admin_uri.host, admin_uri.port) { |http|
-      req = Net::HTTP::Get.new(admin_uri.request_uri)
-      authorization_proc.call(req,authinfo)
-      response = http.request(req)
-      if response.is_a?(Net::HTTPSuccess)
-        response.body
-      else
-        response.error!
-      end
-    }
-    doc = Nokogiri::HTML(html)
-    rows = doc.search("//form[@action='/cgi-bin/admin/chgconf.exe']")
-    map = { :fields => Hash.new { |h,k| h[k] = [] }, :order => [] }
-    rows.each { |row|
-      columns = row.css('.maintext').collect { |c| c.text }
-      field_info = columns[2].downcase.gsub(/(\s+[a-z])/) { |ch| ch.upcase.strip }.split(/-/)
-      if field_info.length == 2
-        map[:fields]["dcterms.#{field_info[1]}"] << columns[1]
-      else
-        map[:fields]["dc.#{field_info[0]}"] << columns[1]
-      end
-      map[:order] << columns[1] unless columns[6] == 'Yes'
-    }
-    map[:fields]['dc.identifier'] << 'Permalink'
-    @@maps[self.signature(uri,collection)] = self.new(map[:fields], map[:order])
+
+    dc_map = self.from(uri, 'DC_MAPPING')
+    if dc_map.nil?
+      fields = open(uri.merge("dc.txt")) { |res| res.read }
+      dc_map = {}
+      fields.each_line { |field|
+        field_properties = field.chomp.split(/:/)
+        dc_field = self.normalize_field_name(field_properties[0])
+        field_code = field_properties[1]
+        dc_map[field_code] = dc_field
+      }
+      @@maps[self.signature(uri, 'DC_MAPPING')] = dc_map
+    end
+
+    begin
+      fields = open(uri.merge("#{collection}/index/etc/config.txt")) { |res| res.read }
+      map = { :fields => Hash.new { |h,k| h[k] = [] }, :order => [] }
+      fields.each_line { |field|
+        field_properties = field.chomp.split(/:/)
+        field_label = field_properties.first
+        field_code = field_properties.last
+        map[:fields][dc_map[field_code]] << field_label
+        map[:order] << field_label unless field_properties[-3] == 'HIDE'
+      }
+      map[:fields]['dc.identifier'] << 'Permalink'
+      @@maps[self.signature(uri,collection)] = self.new(map[:fields], map[:order])
+    rescue OpenURI::HTTPError => e
+      return nil
+    end
   end
   
   # Assigns a map (either an initialized Map or a Hash/Array combination indicating the 
@@ -253,6 +242,15 @@ class Mapper < GenericMapper
   private
   def self.signature(uri, collection)
     "#{uri.to_s} :: #{collection}"
+  end
+
+  def self.normalize_field_name(fieldname)
+    parts = fieldname.downcase.gsub(/(\s+[a-z])/) { |ch| ch.upcase.strip }.split(/-/)
+    if parts.length == 1
+      "dc.#{parts[0]}"
+    else
+      "dcterms.#{parts[1]}"
+    end
   end
   
 end
