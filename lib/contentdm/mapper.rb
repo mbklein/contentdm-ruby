@@ -89,8 +89,7 @@ class Mapper < GenericMapper
     return @@maps.include?(self.signature(uri,collection))
   end
   
-  # Initializes Mappers for all collections at the specified base URI. See init_map
-  # for details on authinfo.
+  # Initializes Mappers for all collections at the specified base URI.
   def self.init_all(base_uri)
     uri = self.normalize(base_uri)
     response = Nokogiri::XML(open(uri.merge('cgi-bin/oai.exe?verb=ListSets')))
@@ -100,12 +99,7 @@ class Mapper < GenericMapper
     }
   end
   
-  # Initializes the Mapper for the given collection at the specified base URI. Because this method involves
-  # screen-scraping CONTENTdm's administrator interface, it requires basic authorization credentials for
-  # an administrative account. The authinfo parameter can take one of three forms:
-  # * A [username, password] Array
-  # * A { :user => username, :pass => password } Hash
-  # * A Proc or lambda function that returns one of the two above forms
+  # Initializes the Mapper for the given collection at the specified base URI.
   def self.init_map(base_uri, collection)
     uri = self.normalize(base_uri)
 
