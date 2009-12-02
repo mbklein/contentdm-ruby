@@ -1,0 +1,36 @@
+= Introduction
+The ContentDm module for Ruby provides access to structured metadata in CONTENTdm collections
+via CONTENTdm's built-in OAI-PMH provider interface. The module turns Qualified Dublin Core
+metadata into a convenient hash structure. With proper authentication, it can also scrape
+collection-level field information from the CONTENTdm administrative interface and create
+formatted HTML output from retrieved records.
+
+= Examples
+
+  # Create a Harvester using the location of a CONTENTdm repository
+  harvester = ContentDm::Harvester.new('http://mycontentdm.example.com/')
+  
+  # Retrieve the list of collections
+  collections = harvester.collections  
+  => {"collection1" => "My First Collection", "collection2" => "My Second Collection"}
+  
+  # Retrieve a single record from collection1
+  record = harvester.get_record("collection1",16)
+  
+  # Retrieve all records from collection2
+  records = harvester.get_records("collection2")
+  
+Calling <tt>record#to_xml()</tt> or <tt>record#to_html()</tt> at this point will return 
+generic and arbitrarily-ordered markup, because the ContentDm::Mapper for 
+<tt>collection1</tt> hasn't been initialized.
+
+  # Initialize the Mapper for a single collection
+  ContentDm::Mapper.init_map("http://mycontentdm.example.com/", "collection1" :user => "my_contentdm_admin", :pass => "p@$$w0rd")
+  => #<ContentDm::Mapper ... >
+  
+  # Initialize Mappers for all collections on the server
+  ContentDm::Mapper.init_all("http://mycontentdm.example.com/", :user => "my_contentdm_admin", :pass => "p@$$w0rd")
+  => ["collection1", "collection2"]
+  
+Now <tt>record#to_xml()</tt> and <tt>record#to_html()</tt> will return markup consistent with
+the settings defined for the collection within CONTENTdm.
