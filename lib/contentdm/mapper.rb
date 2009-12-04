@@ -1,10 +1,22 @@
 require 'rubygems'
-require 'nokogiri'
+require 'erb'
 require 'net/http'
+require 'nokogiri'
 require 'open-uri'
 require 'uri'
 
 module ContentDm
+  
+DEFAULT_TEMPLATE = %{<span>
+% field_order.each do |fieldname|
+%   unless data[fieldname].nil? or data[fieldname].empty?
+    <p>
+        <b><%= fieldname %>: </b>
+        <%= data[fieldname].to_a.join("; ") %>
+    </p>
+%   end 
+% end
+</span>}
   
 # GenericMapper acts as a fallback formatter for instances when no other Mapper is defined
 class GenericMapper
@@ -116,21 +128,17 @@ class Mapper < GenericMapper
       @@maps[self.signature(uri, 'DC_MAPPING')] = dc_map
     end
 
-    begin
-      fields = open(uri.merge("#{collection}/index/etc/config.txt")) { |res| res.read }
-      map = { :fields => Hash.new { |h,k| h[k] = [] }, :order => [] }
-      fields.each_line { |field|
-        field_properties = field.chomp.split(/:/)
-        field_label = field_properties.first
-        field_code = field_properties.last
-        map[:fields][dc_map[field_code]] << field_label
-        map[:order] << field_label unless field_properties[-3] == 'HIDE'
-      }
-      map[:fields]['dc.identifier'] << 'Permalink'
-      @@maps[self.signature(uri,collection)] = self.new(map[:fields], map[:order])
-    rescue OpenURI::HTTPError => e
-      return nil
-    end
+    fields = open(uri.merge("#{collection}/index/etc/config.txt")) { |res| res.read }
+    map = { :fields => Hash.new { |h,k| h[k] = [] }, :order => [] }
+    fields.each_line { |field|
+      field_properties = field.chomp.split(/:/)
+      field_label = field_properties.first
+      field_code = field_properties.last
+      map[:fields][dc_map[field_code]] << field_label
+      map[:order] << field_label unless field_properties[-3] == 'HIDE'
+    }
+    map[:fields]['dc.identifier'] << 'Permalink'
+    @@maps[self.signature(uri,collection)] = self.new(uri, collection, map[:fields], map[:order])
   end
   
   # Assigns a map (either an initialized Map or a Hash/Array combination indicating the 
@@ -140,7 +148,7 @@ class Mapper < GenericMapper
     if args[0].is_a?(self)
       @@maps[self.signature(uri,collection)] = args[0]
     else
-      @@maps[self.signature(uri,collection)] = self.new(*args)
+      @@maps[self.signature(uri,collection)] = self.new(uri, collection, *args)
     end
   end
   
@@ -151,7 +159,9 @@ class Mapper < GenericMapper
   end
   
   # Creates a map based on the hash of fields
-  def initialize(fields, order = nil)
+  def initialize(base_uri, collection, fields, order = nil)
+    @base_uri = base_uri
+    @collection = collection
     @fields = fields
     @order = order
   end
@@ -204,33 +214,11 @@ class Mapper < GenericMapper
   
   # Serialize the given Record to an HTML string
   def to_html(record, opts = {})
-    save_options = { :encoding => 'UTF-8', :save_with => (SaveOptions::AS_XML | SaveOptions::NO_DECLARATION), :indent => 2 }.merge(opts)
+    erb = opts.delete(:template) || DEFAULT_TEMPLATE
     data = self.map(record)
     field_order = @order || []
-    builder = Nokogiri::XML::Builder.new do |doc|
-      doc.span {
-        field_order.each { |fieldname|
-          unless data[fieldname].nil? or data[fieldname].empty?
-            doc.p {
-              doc.b {
-                doc.text "#{fieldname}:"
-              }
-              doc.text " "
-              if data[fieldname].is_a?(Array)
-                doc.br
-                data[fieldname].each { |value|
-                  doc.text value
-                  doc.br
-                }
-              else
-                doc.text data[fieldname]
-              end
-            }
-          end
-        }
-      }
-    end
-    builder.to_xml(save_options)
+    template = ERB.new(erb,nil,'%')
+    template.result(binding)
   end
   
   private

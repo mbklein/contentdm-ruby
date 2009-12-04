@@ -9,12 +9,16 @@ module ContentDm #:nodoc:#
 
     extend URI
     
+    OAI_PAGE_SIZE = 1000
+    
     attr_reader :base_uri
+    attr_accessor :page_size
     
     # The constructor must be passed the URL of a CONTENTdm installation. This will usually
     # be the root of the server on which CONTENTdm is installed.
     def initialize(base_uri)
       @base_uri = self.class.normalize(base_uri)
+      @page_size = 1000
       Mapper.init_all(@base_uri)
     end
 
@@ -28,7 +32,7 @@ module ContentDm #:nodoc:#
     def self.get_record(url)
       base_uri = self.normalize(url)
       params = {}
-      if args = uri.match(/^(.+\/)u\/?\?\/(.+),(\d+)$/)
+      if args = url.match(/^(.+\/)u\/?\?\/(.+),(\d+)$/)
         params[:base_url] = args[1]
         params[:collection] = args[2]
         params[:id] = args[3]
@@ -70,15 +74,17 @@ module ContentDm #:nodoc:#
 
     # Return an array of all the Records in a given collection
     def get_records(collection, opts = {})
-      args = { :verb => 'ListRecords', :set => collection, :metadataPrefix => 'qdc' }.merge(opts)
-      response = get_response(args)
-      token = response.search('/xmlns:OAI-PMH/xmlns:ListRecords/xmlns:resumptionToken/text()', response.namespaces).first
-      result = parse_records(response)
-      until token.nil?
+      max = opts[:max].to_i
+      token = "#{collection}:#{opts[:from].to_s}:#{opts[:until].to_s}:qdc:#{opts[:first].to_i || 0}"
+      result = []
+      until token.nil? or ((max > 0) and (result.length >= max))
         args = { :verb => 'ListRecords', :resumptionToken => token.to_s }
         response = get_response(args)
         token = response.search('/xmlns:OAI-PMH/xmlns:ListRecords/xmlns:resumptionToken/text()', response.namespaces).first
         result += parse_records(response)
+      end
+      if result.length > max
+        result = result[0..max-1]
       end
       result.collect { |record|
         Record.new(record, { :base_uri => @base_uri, :collection => collection })
