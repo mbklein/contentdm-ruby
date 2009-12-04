@@ -195,14 +195,14 @@ class Mapper < GenericMapper
         'xmlns:dcterms' => "http://purl.org/dc/terms/") {
           field_order.each { |fieldname|
             field_info = @fields.find { |k,v| v.include?(fieldname) }
-            unless field_info.nil?
+            unless field_info.nil? or field_info[0].nil?
               (prefix,tag) = field_info[0].split(/\./)
               index = field_info[1].index(fieldname)
               value = data[fieldname]
               if value.is_a?(Array)
                 value = value[index]
               end
-              doc[prefix].send(tag.to_sym) {
+              doc[prefix].send("#{tag}_".to_sym) {
                 doc.text(value)
               }
             end
