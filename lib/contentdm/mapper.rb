@@ -89,20 +89,25 @@ class Mapper < GenericMapper
 
   extend URI
   @@maps = {}
+  @@auto_init = true
   
   attr_accessor :fields, :order
   
-  def self.maps
+  class << self
+    
+  attr_accessor :auto_init
+  
+  def maps
     @@maps.keys
   end
   
   # Returns true if a Mapper has been initialized for the given collection at the specified base URI.
-  def self.mapped?(uri, collection)
+  def mapped?(uri, collection)
     return @@maps.include?(self.signature(uri,collection))
   end
   
   # Initializes Mappers for all collections at the specified base URI.
-  def self.init_all(base_uri)
+  def init_all(base_uri)
     uri = self.normalize(base_uri)
     response = Nokogiri::XML(open(uri.merge('cgi-bin/oai.exe?verb=ListSets')))
     sets = response.search('//xmlns:set/xmlns:setSpec/text()',response.namespaces).collect { |set| set.text }
@@ -112,7 +117,7 @@ class Mapper < GenericMapper
   end
   
   # Initializes the Mapper for the given collection at the specified base URI.
-  def self.init_map(base_uri, collection)
+  def init_map(base_uri, collection)
     uri = self.normalize(base_uri)
 
     dc_map = self.from(uri, 'DC_MAPPING')
@@ -143,7 +148,7 @@ class Mapper < GenericMapper
   
   # Assigns a map (either an initialized Map or a Hash/Array combination indicating the 
   # field mapping and field order) to a given collection.
-  def self.assign_map(base_uri, collection, *args)
+  def assign_map(base_uri, collection, *args)
     uri = self.normalize(base_uri)
     if args[0].is_a?(self)
       @@maps[self.signature(uri,collection)] = args[0]
@@ -154,10 +159,16 @@ class Mapper < GenericMapper
   
   # Returns the appropriate Mapper for the given collection at the specified base URI. If it
   # has not been initialized or the collection does not exist, returns nil.
-  def self.from(uri, collection)
+  def from(uri, collection)
+    if @@auto_init and (collection != 'DC_MAPPING')
+      unless self.mapped?(uri, collection)
+        self.init_map(uri, collection)
+      end
+    end
     @@maps[self.signature(uri,collection)]
   end
-  
+  end
+
   # Creates a map based on the hash of fields
   def initialize(base_uri, collection, fields, order = nil)
     @base_uri = base_uri
@@ -213,8 +224,8 @@ class Mapper < GenericMapper
   end
   
   # Serialize the given Record to an HTML string
-  def to_html(record, opts = {})
-    erb = opts.delete(:template) || DEFAULT_TEMPLATE
+  def to_html(record, vars = {})
+    erb = vars.delete(:template) || DEFAULT_TEMPLATE
     data = self.map(record)
     field_order = @order || []
     template = ERB.new(erb,nil,'%')

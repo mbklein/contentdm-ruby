@@ -61,28 +61,22 @@ class Record
     @metadata['dc.identifier'][-1] = value
   end
   
+  def mapper
+    Mapper.from(@source[:base_uri],@source[:collection]) || GenericMapper.new
+  end
+  
   # Serialize the Record to a Qualified Dublin Core XML string. If
   # a Mapper has been initialized for the Record's owning collection,
   # it will be used. Otherwise, the GenericMapper will be used.
   def to_xml(opts = {})
-    mapper = Mapper.from(@source[:base_uri],@source[:collection])
-    if mapper
-      mapper.to_xml(self, opts)
-    else
-      GenericMapper.new.to_xml(self, opts)
-    end
+    mapper.to_xml(self, opts)
   end
   
   # Serialize the Record to an HTML string.  If a Mapper has been
   # initialized for the Record's owning collection, it will be 
   # used. Otherwise, the GenericMapper will be used.
   def to_html(opts = {})
-    mapper = Mapper.from(@source[:base_uri],@source[:collection])
-    if mapper
-      mapper.to_html(self, opts)
-    else
-      GenericMapper.new.to_html(self, opts)
-    end
+    mapper.to_html(self, opts)
   end
   
 end

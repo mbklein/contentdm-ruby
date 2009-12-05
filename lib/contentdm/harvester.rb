@@ -19,7 +19,6 @@ module ContentDm #:nodoc:#
     def initialize(base_uri)
       @base_uri = self.class.normalize(base_uri)
       @page_size = 1000
-      Mapper.init_all(@base_uri)
     end
 
     # Convenience method which returns a single Record when passed a URL in
