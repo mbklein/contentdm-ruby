@@ -183,11 +183,13 @@ class Mapper < GenericMapper
     result = {}
     @fields.each_pair { |k,v|
       v.each_with_index { |key,index|
-        value = data[k][index]
-        unless value.nil?
-          result[key] = value.split(/;\s*/)
-          if result[key].length == 1
-            result[key] = result[key].first
+        if data[k]
+          value = data[k][index]
+          unless value.nil?
+            result[key] = value.split(/;\s*/)
+            if result[key].length == 1
+              result[key] = result[key].first
+            end
           end
         end
       }

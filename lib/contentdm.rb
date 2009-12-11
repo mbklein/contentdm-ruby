@@ -4,5 +4,5 @@ require 'contentdm/mapper'
 require 'contentdm/record'
 
 module ContentDm
-  VERSION = '0.1.8'
+  VERSION = '0.1.9'
 end
