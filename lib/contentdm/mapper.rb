@@ -176,6 +176,11 @@ class Mapper < GenericMapper
     @fields = fields
     @order = order
   end
+
+  def rename(old_field,new_field)
+    @fields.each_pair { |k,v| v.collect! { |name| name == old_field ? new_field : name } }
+    @order.collect! { |name| name == old_field ? new_field : name }
+  end
   
   # Returns a hash of field labels and data
   def map(record)
