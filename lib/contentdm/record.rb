@@ -9,14 +9,15 @@ class Record
     @source = source
 
     # Account for bug in single-record output
-    parts = self.permalink.split(/\t/)
-    if parts.length > 1
-      self.permalink = @source[:base_uri].merge(parts.last).to_s
-    end
+#    parts = self.permalink.split
+#    if parts.length > 1
+#      self.permalink = @source[:base_uri].merge(parts.last).to_s
+#    end
     
     (collection, record_id) = @metadata['dc.identifier'][-1].scan(/\?\/(.+),([0-9]+)$/).flatten
     @source[:collection] = collection
     @source[:id] = record_id.to_i
+    self.permalink = @source[:base_uri].merge("/u?/#{collection},#{record_id}").to_s
   end
   
   def img_href(opts = {})
