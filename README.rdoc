@@ -26,5 +26,5 @@ formatted HTML output from retrieved records.
   puts record.to_html()
   
   # Retrieve a record based on its persistent URI using the class method version of #get_record
-  record = ContentDm::Harvester.get_record('http://mycontentdm.example.com/u/?/collection1,16)
+  record = ContentDm::Harvester.get_record('http://mycontentdm.example.com/u/?/collection1,16')
   
