@@ -19,18 +19,9 @@ formatted HTML output from retrieved records.
   
   # Retrieve all records from collection2
   records = harvester.get_records("collection2")
-  
-Calling <tt>record#to_xml()</tt> or <tt>record#to_html()</tt> at this point will return 
-generic and arbitrarily-ordered markup, because the ContentDm::Mapper for 
-<tt>collection1</tt> hasn't been initialized.
 
-  # Initialize the Mapper for a single collection
-  ContentDm::Mapper.init_map("http://mycontentdm.example.com/", "collection1" :user => "my_contentdm_admin", :pass => "p@$$w0rd")
-  => #<ContentDm::Mapper ... >
+  # Output XML and HTML markup consistent with the default CONTENTdm settings for the
+  # collection
+  puts record.to_xml()
+  puts record.to_html()
   
-  # Initialize Mappers for all collections on the server
-  ContentDm::Mapper.init_all("http://mycontentdm.example.com/", :user => "my_contentdm_admin", :pass => "p@$$w0rd")
-  => ["collection1", "collection2"]
-  
-Now <tt>record#to_xml()</tt> and <tt>record#to_html()</tt> will return markup consistent with
-the settings defined for the collection within CONTENTdm.
