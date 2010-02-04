@@ -177,6 +177,7 @@ class Mapper < GenericMapper
     @order = order
   end
 
+  # Rename a metadata field
   def rename(old_field,new_field)
     @fields.each_pair { |k,v| v.collect! { |name| name == old_field ? new_field : name } }
     @order.collect! { |name| name == old_field ? new_field : name }
